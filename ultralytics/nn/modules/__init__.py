@@ -24,6 +24,7 @@ from .block import (
     C3,
     C3TR,
     CIB,
+    ConvSpD,
     DFL,
     ELAN1,
     PSA,

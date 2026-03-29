@@ -19,6 +19,7 @@ __all__ = (
     "C3",
     "C3TR",
     "CIB",
+    "ConvSpD",
     "DFL",
     "ELAN1",
     "PSA",
@@ -51,7 +52,7 @@ __all__ = (
     "RepVGGDW",
     "ResNetLayer",
     "SCDown",
-    "TorchVision",
+    "TorchVision"
 )
 
 
@@ -2065,3 +2066,47 @@ class RealNVP(nn.Module):
             self.float()
         z, log_det = self.backward_p(x)
         return self.prior.log_prob(z) + log_det
+
+
+class SpD(nn.Module):
+    def __init__(self, scale: int = 2):
+        super().__init__()
+        self.scale = scale
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        h, w = x.shape[-2:]
+
+        pad_h = (self.scale - h % self.scale) % self.scale
+        pad_w = (self.scale - w % self.scale) % self.scale
+
+        if pad_h or pad_w:
+            x = F.pad(x, (0, pad_w, 0, pad_h))
+
+        b, c, h, w = x.shape
+        out_h, out_w = h // self.scale, w // self.scale
+
+        x = x.view(b, c, out_h, self.scale, out_w, self.scale)
+
+        x = x.permute(0, 1, 3, 5, 2, 4).contiguous()
+        x = x.view(b, c*self.scale*self.scale, out_h, out_w)
+
+        return x
+
+
+class ConvSpD(nn.Module):
+    def __init__(self, c_in: int, c_out: int, k: int = 3, s: int = 2,
+                 light_mode: bool = True, act: bool | nn.Module = True):
+        '''
+        :param s: stride > 1 assumption
+        '''
+        super().__init__()
+        self.conv_in = Conv(c_in, c_out, k=k, s=1, act=act)
+        self.spd = SpD(scale=s)
+        self.conv_out = Conv(c_out*s*s, c_out, k=1, s=1, g=c_out if light_mode else 1, act=act)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.conv_in(x)
+        x = self.spd(x)
+        x = self.conv_out(x)
+
+        return x
