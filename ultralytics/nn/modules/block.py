@@ -52,7 +52,8 @@ __all__ = (
     "RepVGGDW",
     "ResNetLayer",
     "SCDown",
-    "TorchVision"
+    "TorchVision",
+    "WConcat"
 )
 
 
@@ -2108,5 +2109,26 @@ class ConvSpD(nn.Module):
         x = self.conv_in(x)
         x = self.spd(x)
         x = self.conv_out(x)
+
+        return x
+
+
+class WConcat(nn.Module):
+    def __init__(self, channels_list: list[int]):
+        super().__init__()
+        self.w = nn.Parameter(torch.ones(len(channels_list), dtype=torch.float32))
+
+        indices = []
+        for i, c in enumerate(channels_list):
+            indices.extend([i] * c)
+
+        self.register_buffer("weight_indices", torch.tensor(indices, dtype=torch.long))
+
+    def forward(self, x: list[torch.Tensor]) -> torch.Tensor:
+        x = torch.cat(x, dim=1)
+        weights = torch.softmax(self.w, dim=0)
+        #---b, c, h, w
+        weights = weights[self.weight_indices].view(1, -1, 1, 1)
+        x = x * weights
 
         return x
