@@ -2093,22 +2093,40 @@ class SpD(nn.Module):
 
         return x
 
+# #---version 1
+# class ConvSpD(nn.Module):
+#     def __init__(self, c_in: int, c_out: int, k: int = 3, s: int = 2,
+#                  light_mode: bool = True, act: bool | nn.Module = True):
+#         '''
+#         :param s: stride > 1 assumption
+#         '''
+#         super().__init__()
+#         self.conv_in = Conv(c_in, c_out, k=k, s=1, act=act)
+#         self.spd = SpD(scale=s)
+#         self.conv_out = Conv(c_out*s*s, c_out, k=1, s=1, g=c_out if light_mode else 1, act=act)
+#
+#     def forward(self, x: torch.Tensor) -> torch.Tensor:
+#         x = self.conv_in(x)
+#         x = self.spd(x)
+#         x = self.conv_out(x)
+#
+#         return x
 
+#---version 2
 class ConvSpD(nn.Module):
-    def __init__(self, c_in: int, c_out: int, k: int = 3, s: int = 2,
-                 light_mode: bool = True, act: bool | nn.Module = True):
+    def __init__(self, c_in: int, c_out: int, k: int = 3, s: int = 2, act: bool | nn.Module = True):
         '''
         :param s: stride > 1 assumption
         '''
         super().__init__()
-        self.conv_in = Conv(c_in, c_out, k=k, s=1, act=act)
         self.spd = SpD(scale=s)
-        self.conv_out = Conv(c_out*s*s, c_out, k=1, s=1, g=c_out if light_mode else 1, act=act)
+        self.conv_int = Conv(c_in*s*s, c_in, k=3, g=c_in//2, act=act)
+        self.conv = Conv(c_in, c_out, k=k, act=act)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.conv_in(x)
         x = self.spd(x)
-        x = self.conv_out(x)
+        x = self.conv_int(x)
+        x = self.conv(x)
 
         return x
 
