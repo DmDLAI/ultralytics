@@ -52,6 +52,7 @@ __all__ = (
     "RepVGGDW",
     "ResNetLayer",
     "SCDown",
+    "StridedConv",
     "TorchVision",
     "WConcat"
 )
@@ -2132,7 +2133,7 @@ class SpD(nn.Module):
 
 #---version 3
 class ConvSpD(nn.Module):
-    def __init__(self, c_in: int, c_out: int, k: int = 3, s: int = 2, g: int = 2, act: bool | nn.Module = True):
+    def __init__(self, c_in: int, c_out: int, k: int = 3, s: int = 2, g: int = 1, act: bool | nn.Module = True):
         '''
         :param s: stride > 1 assumption
         '''
@@ -2164,5 +2165,55 @@ class WConcat(nn.Module):
         #---b, c, h, w
         weights = weights[self.weight_indices].view(1, -1, 1, 1)
         x = x * weights
+
+        return x
+
+
+# class StridedConv(nn.Module):
+#     def __init__(self, c_in: int, c_out: int, k: int = 3, s: int = 2, act: bool | nn.Module = True):
+#         '''
+#         :param s: stride > 1 assumption
+#         '''
+#         super().__init__()
+#         self.stride = s
+#         self.avg = nn.AvgPool2d(kernel_size=self.stride, stride=self.stride)
+#         self.max = nn.MaxPool2d(kernel_size=self.stride, stride=self.stride)
+#         self.conv = Conv(2*c_in, c_out, k=k, act=act)
+#
+#     def forward(self, x: torch.Tensor) -> torch.Tensor:
+#         pad_h = (self.stride - x.shape[-2] % self.stride) % self.stride
+#         pad_w = (self.stride - x.shape[-1] % self.stride) % self.stride
+#
+#         if pad_h or pad_w:
+#             x = F.pad(x, (0, pad_w, 0, pad_h))
+#
+#         y = self.avg(x)
+#         x = self.max(x)
+#
+#         x = torch.cat([x, y], dim=1)
+#         del y
+#         x = self.conv(x)
+#
+#         return x
+
+
+class StridedConv(nn.Module):
+    def __init__(self, c_in: int, c_out: int, k: int = 3, s: int = 2, act: bool | nn.Module = True):
+        '''
+        :param s: stride > 1 assumption
+        '''
+        super().__init__()
+        self.stride = s
+        self.avg = nn.AvgPool2d(kernel_size=self.stride, stride=self.stride, ceil_mode=True)
+        self.max = nn.MaxPool2d(kernel_size=self.stride, stride=self.stride, ceil_mode=True)
+        self.conv = Conv(2*c_in, c_out, k=k, act=act)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        y = self.avg(x)
+        x = self.max(x)
+
+        x = torch.cat([x, y], dim=1)
+        del y
+        x = self.conv(x)
 
         return x

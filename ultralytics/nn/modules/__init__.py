@@ -59,6 +59,7 @@ from .block import (
     RepVGGDW,
     ResNetLayer,
     SCDown,
+    StridedConv,
     TorchVision,
     WConcat
 )

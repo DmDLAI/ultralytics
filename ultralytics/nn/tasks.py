@@ -67,6 +67,7 @@ from ultralytics.nn.modules import (
     SCDown,
     Segment,
     Segment26,
+    StridedConv,
     TorchVision,
     WConcat,
     WorldDetect,
@@ -1611,6 +1612,7 @@ def parse_model(d, ch, verbose=True):
             C2fCIB,
             A2C2f,
             ConvSpD,
+            StridedConv,
         }
     )
     repeat_modules = frozenset(  # modules with 'repeat' arguments
